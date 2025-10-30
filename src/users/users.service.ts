@@ -1,28 +1,59 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { User } from './users.entity';
+import { User, UserDocument, UserRole } from './users.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User) private usersRepo: Repository<User>
-  ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  async createUser(dto: CreateUserDto): Promise<User> {
+  async createUser(dto: CreateUserDto): Promise<UserDocument> {
+    // Check if user already exists by email
+    const existingUserByEmail = await this.userModel
+      .findOne({ email: dto.email })
+      .exec();
+    if (existingUserByEmail) {
+      throw new Error('A user with this email already exists');
+    }
+
+    // Check if user already exists by phone number
+    const existingUserByPhone = await this.userModel
+      .findOne({ phoneNumber: dto.phoneNumber })
+      .exec();
+    if (existingUserByPhone) {
+      throw new Error('A user with this phone number already exists');
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const user = this.usersRepo.create({ ...dto, password: hashedPassword });
-    return this.usersRepo.save(user);
+    const user = new this.userModel({ ...dto, password: hashedPassword });
+    return user.save();
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepo.findOne({ where: { email } });
+  async findByEmail(email: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ email }).exec();
   }
-  
 
-  async updateRefreshToken(userId: number, refreshToken: string) {
-    await this.usersRepo.update(userId, { refreshToken });
+  async findById(id: string): Promise<UserDocument | null> {
+    return this.userModel.findById(id).exec();
+  }
+
+  async updateRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { refreshToken }).exec();
+  }
+
+  async findByRole(role: UserRole): Promise<UserDocument[]> {
+    return this.userModel
+      .find({ role })
+      .select('-password -refreshToken')
+      .exec();
+  }
+
+  async getAllUsers(): Promise<UserDocument[]> {
+    return this.userModel.find().select('-password -refreshToken').exec();
   }
 }
