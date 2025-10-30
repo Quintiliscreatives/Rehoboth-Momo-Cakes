@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { User } from './users/users.entity';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'sqlite', // Or your DB
-      database: 'db.sqlite',
-      entities: [User],
-      synchronize: true,
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/momo_cakes',
+    ),
     UsersModule,
     AuthModule,
+    ProductsModule,
   ],
 })
 export class AppModule {}
