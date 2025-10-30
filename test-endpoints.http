@@ -1,0 +1,146 @@
+# Products Module API Testing Guide
+
+## Base URL: http://localhost:3001
+
+## 🔐 Authentication Setup
+First, create an admin user to get authentication token:
+
+### 1. Create Admin User
+POST http://localhost:3001/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Test Admin",
+  "email": "admin@momocakes.com",
+  "phoneNumber": "07012345678",
+  "address": "123 Test Street, Lagos",
+  "age": 30,
+  "password": "password123"
+}
+
+### 2. Login as Admin (if user already exists)
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@momocakes.com",
+  "password": "password123"
+}
+
+**Copy the accessToken from response for admin endpoints**
+
+---
+
+## 📦 Public Endpoints (No Authentication)
+
+### 3. Get All Active Products (Should be empty initially)
+GET http://localhost:3001/products
+
+### 4. Get Single Product (Test after creating a product)
+GET http://localhost:3001/products/{{product_id}}
+
+---
+
+## 🔑 Admin Endpoints (Require Authorization: Bearer {{token}})
+
+### 5. Create Product
+POST http://localhost:3001/products
+Authorization: Bearer {{your_admin_token}}
+Content-Type: application/json
+
+{
+  "name": "Golden Delight Cake",
+  "price": 5200,
+  "description": "A delicious golden cake perfect for celebrations",
+  "quantityAvailable": 25
+}
+
+### 6. Get All Products (Admin View - includes inactive)
+GET http://localhost:3001/products/admin/all
+Authorization: Bearer {{your_admin_token}}
+
+### 7. Get Product Statistics
+GET http://localhost:3001/products/admin/stats
+Authorization: Bearer {{your_admin_token}}
+
+### 8. Update Product
+PATCH http://localhost:3001/products/{{product_id}}
+Authorization: Bearer {{your_admin_token}}
+Content-Type: application/json
+
+{
+  "price": 5500,
+  "description": "A delicious golden cake perfect for celebrations - UPDATED!"
+}
+
+### 9. Update Product Quantity
+PUT http://localhost:3001/products/{{product_id}}/quantity
+Authorization: Bearer {{your_admin_token}}
+Content-Type: application/json
+
+{
+  "quantityAvailable": 30
+}
+
+### 10. Increment Product Quantity (When cakes are baked)
+PATCH http://localhost:3001/products/{{product_id}}/increment-quantity
+Authorization: Bearer {{your_admin_token}}
+Content-Type: application/json
+
+{
+  "quantity": 5
+}
+
+### 11. Toggle Product Active Status
+PATCH http://localhost:3001/products/{{product_id}}/toggle-active
+Authorization: Bearer {{your_admin_token}}
+
+### 12. Upload Product Image
+POST http://localhost:3001/products/{{product_id}}/upload-image
+Authorization: Bearer {{your_admin_token}}
+Content-Type: multipart/form-data
+
+image: [SELECT IMAGE FILE]
+
+### 13. Delete Product
+DELETE http://localhost:3001/products/{{product_id}}
+Authorization: Bearer {{your_admin_token}}
+
+---
+
+## ❌ Error Testing
+
+### 14. Unauthorized Access (Should fail)
+POST http://localhost:3001/products
+Content-Type: application/json
+
+{
+  "name": "Test Product",
+  "price": 1000,
+  "quantityAvailable": 10
+}
+
+### 15. Invalid Data (Should fail)
+POST http://localhost:3001/products
+Authorization: Bearer {{your_admin_token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "price": -100,
+  "quantityAvailable": -5
+}
+
+### 16. Invalid Product ID (Should fail)
+GET http://localhost:3001/products/invalid_id
+
+---
+
+## ✅ Expected Results
+
+1. **GET /products**: `{ message: "Active products retrieved successfully", data: [] }`
+2. **POST /products**: Creates product, returns product data with ID
+3. **Admin endpoints**: Only work with valid admin token
+4. **Error cases**: Return appropriate HTTP status codes (400, 401, 404, 409)
+5. **Image upload**: Returns Cloudinary URL
+6. **Statistics**: Returns counts for total, active, out of stock products
